@@ -98,34 +98,34 @@ namespace NFive.PluginManager.Modules
 
 				var config = new ConfigGenerator
 				{
-					Hostname = string.IsNullOrWhiteSpace(this.ServerName) ? Input.String("server name", "NFive") : this.ServerName,
-					MaxPlayers = this.MaxPlayers ?? Convert.ToUInt16(Input.Int("server max players", 1, 128, 32)),
-					Locale = string.IsNullOrWhiteSpace(this.Locale) ? Input.String("server locale", "en-US", s =>
-					{
-						if (Regex.IsMatch(s, @"[a-z]{2}-[A-Z]{2}")) return true;
+					//Hostname = string.IsNullOrWhiteSpace(this.ServerName) ? Input.String("server name", "NFive") : this.ServerName,
+					//MaxPlayers = this.MaxPlayers ?? Convert.ToUInt16(Input.Int("server max players", 1, 128, 32)),
+					//Locale = string.IsNullOrWhiteSpace(this.Locale) ? Input.String("server locale", "en-US", s =>
+					//{
+					//	if (Regex.IsMatch(s, @"[a-z]{2}-[A-Z]{2}")) return true;
 
-						Console.Write("Please enter a valid locale (xx-XX format): ");
-						return false;
-					}) : this.Locale,
-					OneSync = this.OneSync ?? Input.Bool("enable OneSync", true),
-					Tags = (string.IsNullOrWhiteSpace(this.Tags) ? Input.String("server tags (separate with space)", "NFive") : this.Tags).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Distinct().ToList(),
-					LicenseKey = string.IsNullOrWhiteSpace(this.LicenseKey) ? Input.String("server license key (https://keymaster.fivem.net/)", s =>
-					{
-						if (Regex.IsMatch(s, @"[\d\w]{32}")) return true;
+					//	Console.Write("Please enter a valid locale (xx-XX format): ");
+					//	return false;
+					//}) : this.Locale,
+					//OneSync = this.OneSync ?? Input.Bool("enable OneSync", true),
+					//Tags = (string.IsNullOrWhiteSpace(this.Tags) ? Input.String("server tags (separate with space)", "NFive") : this.Tags).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Distinct().ToList(),
+					//LicenseKey = string.IsNullOrWhiteSpace(this.LicenseKey) ? Input.String("server license key (https://keymaster.fivem.net/)", s =>
+					//{
+					//	if (Regex.IsMatch(s, @"[\d\w]{32}")) return true;
 
-						Console.Write("Please enter a valid license key: ");
-						return false;
-					}).ToLowerInvariant() : this.LicenseKey,
-					SteamKey = string.IsNullOrWhiteSpace(this.SteamKey) ? Regex.Replace(Input.String("Steam API license key (https://steamcommunity.com/dev/apikey)", "<disabled>", s =>
-					{
-						if (s == "<disabled>") return true;
-						if (s == "none") return true;
-						if (Regex.IsMatch(s, @"[0-9a-fA-F]{32}")) return true;
+					//	Console.Write("Please enter a valid license key: ");
+					//	return false;
+					//}).ToLowerInvariant() : this.LicenseKey,
+					//SteamKey = string.IsNullOrWhiteSpace(this.SteamKey) ? Regex.Replace(Input.String("Steam API license key (https://steamcommunity.com/dev/apikey)", "<disabled>", s =>
+					//{
+					//	if (s == "<disabled>") return true;
+					//	if (s == "none") return true;
+					//	if (Regex.IsMatch(s, @"[0-9a-fA-F]{32}")) return true;
 
-						Console.Write("Please enter a valid Steam API license key: ");
-						return false;
-					}), "^<disabled>$", "none") : this.SteamKey,
-					RconPassword = string.IsNullOrWhiteSpace(this.RconPassword) ? Regex.Replace(Input.Password("RCON password", "<disabled>"), "^<disabled>$", string.Empty) : this.RconPassword
+					//	Console.Write("Please enter a valid Steam API license key: ");
+					//	return false;
+					//}), "^<disabled>$", "none") : this.SteamKey,
+					//RconPassword = string.IsNullOrWhiteSpace(this.RconPassword) ? Regex.Replace(Input.Password("RCON password", "<disabled>"), "^<disabled>$", string.Empty) : this.RconPassword
 				};
 
 				Directory.CreateDirectory(RuntimeEnvironment.IsWindows ? this.Location : Path.Combine(this.Location, "alpine", "opt", "cfx-server"));
@@ -352,23 +352,25 @@ namespace NFive.PluginManager.Modules
 				"config/database.yml"
 			};
 
-			using (var stream = new MemoryStream(data))
-			using (var reader = ReaderFactory.Open(stream))
+			try
 			{
-				if (reader.ArchiveType == ArchiveType.Tar && RuntimeEnvironment.IsLinux)
+				using (var stream = new MemoryStream(data))
+				using (var reader = ReaderFactory.Open(stream))
 				{
-					stream.Position = 0;
-
-					var tempFile = Path.GetTempFileName();
-
-					using (var file = new FileStream(tempFile, FileMode.Create, FileAccess.Write))
+					if (reader.ArchiveType == ArchiveType.Tar && RuntimeEnvironment.IsLinux)
 					{
-						stream.CopyTo(file);
-					}
+						stream.Position = 0;
 
-					using (var process = new Process
-					{
-						StartInfo =
+						var tempFile = Path.GetTempFileName();
+
+						using (var file = new FileStream(tempFile, FileMode.Create, FileAccess.Write))
+						{
+							stream.CopyTo(file);
+						}
+
+						using (var process = new Process
+						{
+							StartInfo =
 						{
 							FileName = "tar",
 							Arguments = $"xJ -C {path} -f {tempFile}",
@@ -376,31 +378,37 @@ namespace NFive.PluginManager.Modules
 							RedirectStandardInput = false,
 							RedirectStandardOutput = false
 						}
-					})
-					{
-						process.Start();
-						process.WaitForExit();
-					}
-
-					File.Delete(tempFile);
-				}
-				else
-				{
-					while (reader.MoveToNextEntry())
-					{
-						if (reader.Entry.IsDirectory) continue;
-
-						var opts = new ExtractionOptions
-							{ExtractFullPath = true, Overwrite = true, PreserveFileTime = true};
-
-						if (skip.Contains(reader.Entry.Key) && File.Exists(Path.Combine(path, reader.Entry.Key)))
+						})
 						{
-							//opts.Overwrite = false; // TODO: Prompt to overwrite existing config?
+							process.Start();
+							process.WaitForExit();
 						}
 
-						reader.WriteEntryToDirectory(path, opts);
+						File.Delete(tempFile);
+					}
+					else
+					{
+						while (reader.MoveToNextEntry())
+						{
+							if (reader.Entry.IsDirectory) continue;
+
+							var opts = new ExtractionOptions
+							{ ExtractFullPath = true, Overwrite = true, PreserveFileTime = true };
+
+							if (skip.Contains(reader.Entry.Key) && File.Exists(Path.Combine(path, reader.Entry.Key)))
+							{
+								//opts.Overwrite = false; // TODO: Prompt to overwrite existing config?
+							}
+
+							reader.WriteEntryToDirectory(path, opts);
+						}
 					}
 				}
+			}
+			catch (Exception ex)
+			{
+
+				throw;
 			}
 
 			Console.WriteLine();
