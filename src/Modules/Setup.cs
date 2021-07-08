@@ -193,7 +193,7 @@ namespace NFive.PluginManager.Modules
 		{
 			var platformName = RuntimeEnvironment.IsWindows ? "Windows" : "Linux";
 			var platformUrl = RuntimeEnvironment.IsWindows ? "build_server_windows" : "build_proot_linux";
-			var platformFile = RuntimeEnvironment.IsWindows ? "server.zip" : "fx.tar.xz";
+			var platformFile = RuntimeEnvironment.IsWindows ? $"({Regex.Escape("server.zip")}|{Regex.Escape("server.7z")})" : "(fx.tar.xz)";
 			var platformPath = RuntimeEnvironment.IsWindows ? Path.Combine(path) : Path.Combine(path, "alpine", "opt", "cfx-server");
 
 			if (!string.IsNullOrWhiteSpace(source) && File.Exists(source))
@@ -214,15 +214,16 @@ namespace NFive.PluginManager.Modules
 				using (var client = new WebClient())
 				{
 					var page = await client.DownloadStringTaskAsync($"https://runtime.fivem.net/artifacts/fivem/{platformUrl}/master/");
-
-					for (var match = new Regex($"href=\"\\./(\\d+)-([a-f0-9]{{40}})/{Regex.Escape(platformFile)}\"( class=\"button is-link is-primary)?( class=\"button is-link is-danger)?", RegexOptions.IgnoreCase).Match(page); match.Success; match = match.NextMatch())
+					for (var match = new Regex($"href= *\"\\./(\\d+)-([a-f0-9]{{40}})/{platformFile}\"( class=\"button is-link is-primary)?( class=\"button is-link is-danger)?", RegexOptions.IgnoreCase).Match(page); match.Success; match = match.NextMatch())
 					{
 						var version = uint.Parse(match.Groups[1].Value);
 						versions.Add(new Tuple<uint, string>(version, match.Groups[2].Value));
 
-						if (match.Groups[3].Success) recommendedVersion = version;
-						if (match.Groups[4].Success) optionalVersion = version;
+						if (match.Groups[4].Success) recommendedVersion = version;
+						if (match.Groups[5].Success) optionalVersion = version;
 					}
+
+
 				}
 
 				var latestVersion = versions.Max();
