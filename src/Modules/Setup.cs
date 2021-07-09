@@ -306,9 +306,10 @@ namespace NFive.PluginManager.Modules
 		{
 			Console.WriteLine("Finding latest NFive version...");
 
-			var version = (await Adapters.Bintray.Version.Get("nfive/NFive/NFive")).Name;
-
-			var data = await DownloadCached($"https://dl.bintray.com/nfive/NFive/{version}/nfive.zip", "NFive", version, $"nfive_{version}.zip");
+			// The NFive build pipeline will put the version into the filename
+			//var version = (await Adapters.Bintray.Version.Get("nfive/NFive/NFive")).Name;
+			var version = "1.0";
+			var data = await DownloadCached($"https://github.com/HTB-5M/NFive/releases/latest/download/nfive_{version}.zip", "NFive", version, $"nfive_{version}.zip");
 
 			Install(path, "NFive", data.Item1);
 		}
